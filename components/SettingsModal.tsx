@@ -25,7 +25,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   ]
 
   useEffect(() => {
-    setIsMounted(true)
     if (isOpen) {
       setProviderKeys(storage.getAllProviderKeys())
     }
