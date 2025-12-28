@@ -13,7 +13,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [editingProvider, setEditingProvider] = useState<string | null>(null)
   const [newKeyValue, setNewKeyValue] = useState('')
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({})
-  const [isMounted, setIsMounted] = useState(false)
+
 
   const AI_PROVIDERS = [
     { id: 'gemini', name: 'Google Gemini', url: 'https://makersuite.google.com/app/apikey' },
