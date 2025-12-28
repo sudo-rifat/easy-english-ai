@@ -30,7 +30,7 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
     const html2pdf = (await import('html2pdf.js')).default
     const element = pdfRef.current
     const opt = {
-      margin: [0.5, 0.5],
+      margin: [0.5, 0.5] as [number, number],
       filename: `EasyEnglish_Reader_${new Date().toLocaleDateString()}.pdf`,
       image: { type: 'jpeg' as const, quality: 0.98 },
       html2canvas: { scale: 2, useCORS: true },

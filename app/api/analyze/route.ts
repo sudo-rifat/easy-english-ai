@@ -4,7 +4,7 @@ import { analyzeWithGroq } from '@/lib/ai/groq'
 import { analyzeWithTogether } from '@/lib/ai/together'
 import { analyzeWithOpenAI } from '@/lib/ai/openai'
 import { analyzeWithHuggingFace } from '@/lib/ai/huggingface'
-import { translateWithGoogle, translateWithGoogleSegments, translateBatch } from '@/lib/ai/google-translate'
+import { translateWithGoogleSegments, translateBatch } from '@/lib/ai/google-translate'
 import { STABLE_SYSTEM_PROMPT } from '@/lib/ai/stable'
 
 const JSON_ANALYSIS_PROMPT = `
