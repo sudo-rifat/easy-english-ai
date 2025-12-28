@@ -23,7 +23,7 @@ interface AnalyzerFormProps {
 
 export default function AnalyzerForm({ onAnalyze, loading }: AnalyzerFormProps) {
   const [passage, setPassage] = useState('')
-  const [aiProvider, setAiProvider] = useState('gemini')
+  const [aiProvider, setAiProvider] = useState('google-translate')
   const [apiKey, setApiKey] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
   const [rememberKey, setRememberKey] = useState(false)
@@ -49,8 +49,7 @@ export default function AnalyzerForm({ onAnalyze, loading }: AnalyzerFormProps) 
     }
   }, [aiProvider])
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleAnalyzeClick = () => {
     
     if (!passage.trim()) {
       alert('অনুগ্রহ করে একটি প্যাসেজ প্রবেশ করুন')
@@ -85,7 +84,7 @@ export default function AnalyzerForm({ onAnalyze, loading }: AnalyzerFormProps) 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5 md:space-y-6">
+    <div className="space-y-4 sm:space-y-5 md:space-y-6">
       <div>
         <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-2">
           AI প্রদানকারী
@@ -184,7 +183,8 @@ export default function AnalyzerForm({ onAnalyze, loading }: AnalyzerFormProps) 
       </div>
 
       <button
-        type="submit"
+        type="button"
+        onClick={handleAnalyzeClick}
         disabled={loading || !passage.trim() || (aiProvider !== 'google-translate' && !apiKey.trim())}
         className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 transition-all duration-200 shadow-md sm:shadow-lg hover:shadow-lg sm:hover:shadow-xl"
       >
@@ -202,6 +202,6 @@ export default function AnalyzerForm({ onAnalyze, loading }: AnalyzerFormProps) 
           <strong>🚀 API কী নেই?</strong> শীর্ষে রকেট বোতাম (🚀) ক্লিক করুন আমাদের প্রম্পট জেনারেটর ব্যবহার করতে। বিনামূল্যে ফরম্যাটেড টেক্সট পান যা Word, Google Docs বা শেয়ারিংয়ের জন্য প্রস্তুত!
         </p>
       </div>
-    </form>
+    </div>
   )
 }

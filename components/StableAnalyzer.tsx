@@ -11,7 +11,7 @@ interface StableAnalyzerProps {
 
 export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerProps) {
   const [passage, setPassage] = useState(initialPassage)
-  const [aiProvider, setAiProvider] = useState('gemini')
+  const [aiProvider, setAiProvider] = useState('google-translate')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ lines: { en: string; bn: string }[]; vocab: Record<string, string> } | null>(null)
   const [tooltip, setTooltip] = useState<{ word: string; meaning: string; x: number; y: number } | null>(null)
@@ -40,8 +40,7 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
     html2pdf().from(element).set(opt).save()
   }
 
-  const handleAnalyze = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleAnalyze = async () => {
     if (!passage.trim()) return
 
     setLoading(true)
@@ -89,7 +88,7 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
         word: cleanWord,
         meaning,
         x: e.clientX,
-        y: e.clientY - 40
+        y: e.clientY - 80
       })
 
       // Text to Speech
@@ -99,13 +98,13 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
 
       tooltipTimer.current = setTimeout(() => {
         setTooltip(null)
-      }, 3000)
+      }, 4000)
     }
   }
 
   return (
     <div className="space-y-6">
-      <form onSubmit={handleAnalyze} className="space-y-4 bg-white p-4 rounded-xl shadow-sm border">
+      <div className="space-y-4 bg-white p-4 rounded-xl shadow-sm border">
         <textarea
           value={passage}
           onChange={(e) => setPassage(e.target.value)}
@@ -126,14 +125,15 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
             <option value="huggingface">Hugging Face</option>
           </select>
           <button
-            type="submit"
+            type="button"
+            onClick={handleAnalyze}
             disabled={loading}
             className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 transition shadow-md sm:shadow-lg"
           >
             {loading ? 'প্রক্রিয়া করা হচ্ছে...' : 'ইন্টারেক্টিভ বিশ্লেষণ'}
           </button>
         </div>
-      </form>
+      </div>
 
       {result && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
