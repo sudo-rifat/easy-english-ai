@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
         break
       case 'google-translate':
         // 1. Get Vocabulary (Common for both modes)
-        // Extract words (3+ letters)
-        const words = passage.match(/\b[a-zA-Z]{3,}\b/g) || []
+        // Extract all words (including 1-2 letter words like 'is', 'of', 'a')
+        const words = passage.match(/\b[a-zA-Z]+\b/g) || []
         // Fetch translations for these words
         const vocabMap = await translateBatch(words)
         

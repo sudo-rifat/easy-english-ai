@@ -41,8 +41,8 @@ export async function translateWithGoogleSegments(text: string): Promise<{ sourc
 export async function translateBatch(words: string[]): Promise<Record<string, string>> {
   if (words.length === 0) return {}
   
-  // Get unique words, limit to 50 for performance
-  const uniqueWords = [...new Set(words.map(w => w.toLowerCase().trim()))].filter(w => w.length > 2).slice(0, 50)
+  // Get unique words, limit to 200 for performance (increased from 50)
+  const uniqueWords = [...new Set(words.map(w => w.toLowerCase().trim()))].filter(w => w.length > 0).slice(0, 200)
   
   if (uniqueWords.length === 0) return {}
 
