@@ -70,6 +70,38 @@ body {
   --theme-border: #f3e8ff;
 }
 
+.theme-sunset-orange {
+  --theme-primary: #ea580c; /* orange-600 */
+  --theme-bg: #fff7ed;      /* orange-50 */
+  --theme-text: #9a3412;    /* orange-800 */
+  --theme-accent: #fb923c;  /* orange-400 */
+  --theme-border: #ffedd5;  /* orange-100 */
+}
+
+.theme-rose-red {
+  --theme-primary: #e11d48; /* rose-600 */
+  --theme-bg: #fff1f2;      /* rose-50 */
+  --theme-text: #9f1239;    /* rose-800 */
+  --theme-accent: #fb7185;  /* rose-400 */
+  --theme-border: #ffe4e6;  /* rose-100 */
+}
+
+.theme-ocean-teal {
+  --theme-primary: #0d9488; /* teal-600 */
+  --theme-bg: #f0fdfa;      /* teal-50 */
+  --theme-text: #115e59;    /* teal-800 */
+  --theme-accent: #2dd4bf;  /* teal-400 */
+  --theme-border: #ccfbf1;  /* teal-100 */
+}
+
+.theme-midnight-slate {
+  --theme-primary: #475569; /* slate-600 */
+  --theme-bg: #f8fafc;      /* slate-50 */
+  --theme-text: #1e293b;    /* slate-800 */
+  --theme-accent: #94a3b8;  /* slate-400 */
+  --theme-border: #e2e8f0;  /* slate-200 */
+}
+
 .formatted-content {
   background-color: var(--theme-bg);
   color: var(--theme-text);
@@ -105,12 +137,44 @@ body {
   border-left-color: #9333ea !important;
 }
 
+.theme-sunset-orange .chunk-box {
+  border-left-color: #ea580c !important;
+}
+
+.theme-rose-red .chunk-box {
+  border-left-color: #e11d48 !important;
+}
+
+.theme-ocean-teal .chunk-box {
+  border-left-color: #0d9488 !important;
+}
+
+.theme-midnight-slate .chunk-box {
+  border-left-color: #475569 !important;
+}
+
 .theme-classic-green .main-sentence {
   color: #166534 !important;
 }
 
 .theme-elegant-purple .main-sentence {
   color: #6b21a8 !important;
+}
+
+.theme-sunset-orange .main-sentence {
+  color: #c2410c !important;
+}
+
+.theme-rose-red .main-sentence {
+  color: #be123c !important;
+}
+
+.theme-ocean-teal .main-sentence {
+  color: #0f766e !important;
+}
+
+.theme-midnight-slate .main-sentence {
+  color: #334155 !important;
 }
 
 .formatted-content h1 { color: var(--theme-primary); font-size: 2rem; margin-bottom: 1rem; border-bottom: 2px solid var(--theme-accent); padding-bottom: 0.5rem; }

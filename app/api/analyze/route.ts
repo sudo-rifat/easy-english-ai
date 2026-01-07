@@ -53,8 +53,12 @@ export async function POST(request: NextRequest) {
         break
       case 'google-translate':
         // 1. Get Vocabulary (Common for both modes)
-        // Extract all words (including 1-2 letter words like 'is', 'of', 'a')
-        const words = passage.match(/\b[a-zA-Z]+\b/g) || []
+        // Pre-process passage to replace smart quotes and punctuation with spaces
+        // This ensures words next to quotes are correctly identified as separate words
+        const cleanPassage = passage.replace(/[\u2018\u2019\u201C\u201D".,!?;:()]/g, ' ')
+        
+        // Extract all words (including 1-2 letter words and hyphenated words like 'glass-fronted')
+        const words = cleanPassage.match(/\b[a-zA-Z]+(?:-[a-zA-Z]+)*\b/g) || []
         // Fetch translations for these words
         const vocabMap = await translateBatch(words)
         

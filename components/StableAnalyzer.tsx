@@ -15,7 +15,22 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ lines: { en: string; bn: string }[]; vocab: Record<string, string> } | null>(null)
   const [tooltip, setTooltip] = useState<{ word: string; meaning: string; x: number; y: number; showAbove: boolean } | null>(null)
+  
+  // Initialize from localStorage if available, otherwise default to modern-blue
   const [selectedTheme, setSelectedTheme] = useState<Theme>('modern-blue')
+
+  // Load saved theme on mount
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('easy-english-theme') as Theme
+    if (savedTheme) {
+      setSelectedTheme(savedTheme)
+    }
+  }, [])
+
+  // Save theme to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem('easy-english-theme', selectedTheme)
+  }, [selectedTheme])
   const tooltipTimer = useRef<NodeJS.Timeout | null>(null)
   const pdfRef = useRef<HTMLDivElement>(null)
 
@@ -78,7 +93,7 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
 
   const handleWordClick = (word: string, e: React.MouseEvent<HTMLSpanElement>) => {
     // Clean word for dictionary lookup
-    const cleanWord = word.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase()
+    const cleanWord = word.replace(/[.,/#!$%^&*;:{}=_`~()"'“”‘’]/g, "").toLowerCase()
     const meaning = result?.vocab[cleanWord]
     
     if (meaning) {
@@ -114,9 +129,34 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
     }
   }
 
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText()
+      setPassage(text)
+    } catch (err) {
+      console.error('Failed to read clipboard contents: ', err)
+      // Fallback for Firefox or if permission denied - just focus
+      const textarea = document.querySelector('textarea')
+      if (textarea) {
+        textarea.focus()
+        document.execCommand('paste')
+      }
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="space-y-4 bg-white p-4 rounded-xl shadow-sm border">
+        <div className="flex justify-between items-center">
+          <label className="text-sm font-semibold text-gray-700">ইংরেজি প্যাসেজ</label>
+          <button
+            onClick={handlePaste}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100"
+            title="ক্লিপবোর্ড থেকে পেস্ট করুন"
+          >
+            📋 Paste Text
+          </button>
+        </div>
         <textarea
           value={passage}
           onChange={(e) => setPassage(e.target.value)}
@@ -163,12 +203,12 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
             {result.lines.map((line, idx) => (
               <div 
                 key={idx} 
-                className="sentence-container group p-5 bg-white rounded-xl border border-gray-100 hover:border-blue-400 transition-all duration-300 shadow-sm"
+                className="sentence-container group p-5 bg-white rounded-xl border border-[var(--theme-border)] hover:border-[var(--theme-accent)] transition-all duration-300 shadow-sm"
                 style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
               >
                 <div className="flex flex-wrap gap-x-1.5 gap-y-2 mb-3">
                   {(line.en || '').split(' ').filter(Boolean).map((word, wIdx) => {
-                    const clean = word.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase()
+                    const clean = word.replace(/[.,/#!$%^&*;:{}=_`~()"'“”‘’]/g, "").toLowerCase()
                     const hasMeaning = !!result.vocab[clean]
                     const isSelected = tooltip?.word === clean
                     return (
@@ -180,8 +220,8 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
                           onClick={(e) => handleWordClick(word, e)}
                           className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors font-medium text-xl sm:text-2xl inline-block
                             ${hasMeaning 
-                              ? 'text-blue-700 hover:bg-blue-100 decoration-blue-300 underline underline-offset-4 decoration-dashed' 
-                              : 'text-gray-800'
+                              ? 'text-[var(--theme-primary)] hover:bg-[var(--theme-border)] decoration-[var(--theme-accent)] underline underline-offset-4 decoration-dashed' 
+                              : 'text-[var(--theme-text)]'
                             }`}
                         >
                           {word}
