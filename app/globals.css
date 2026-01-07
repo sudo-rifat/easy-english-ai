@@ -185,3 +185,39 @@ body {
 .formatted-content li { margin-bottom: 0.5rem; }
 .formatted-content code { background-color: rgba(0,0,0,0.05); padding: 0.2rem 0.4rem; border-radius: 0.25rem; font-family: monospace; }
 .formatted-content blockquote { border-left: 4px solid var(--theme-accent); padding-left: 1rem; font-style: italic; margin: 1rem 0; color: #64748b; }
+
+/* Cropper.js - Larger Touch-Friendly Handles */
+.cropper-point {
+  width: 20px !important;
+  height: 20px !important;
+  background-color: #3b82f6 !important;
+  border-radius: 50% !important;
+  opacity: 1 !important;
+}
+
+.cropper-point.point-e,
+.cropper-point.point-w {
+  margin-top: -10px !important;
+}
+
+.cropper-point.point-n,
+.cropper-point.point-s {
+  margin-left: -10px !important;
+}
+
+.cropper-point.point-ne,
+.cropper-point.point-nw,
+.cropper-point.point-se,
+.cropper-point.point-sw {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+.cropper-line {
+  background-color: #3b82f6 !important;
+}
+
+.cropper-view-box {
+  outline: 3px solid #3b82f6 !important;
+  outline-color: rgba(59, 130, 246, 0.85) !important;
+}

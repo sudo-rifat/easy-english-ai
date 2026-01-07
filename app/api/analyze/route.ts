@@ -52,12 +52,20 @@ export async function POST(request: NextRequest) {
         analysis = await analyzeWithGroq(passage, apiKey, systemPrompt)
         break
       case 'google-translate':
-        // 1. Get Vocabulary (Common for both modes)
         // Pre-process passage to replace smart quotes and punctuation with spaces
         // This ensures words next to quotes are correctly identified as separate words
-        const cleanPassage = passage.replace(/[\u2018\u2019\u201C\u201D".,!?;:()]/g, ' ')
+        // Also handle possessives ('s) and contractions by replacing apostrophe-based patterns
+        let cleanPassage = passage.replace(/[\u2018\u2019\u201C\u201D".,!?;:()]/g, ' ')
+        // Remove possessive 's and handle contractions (n't, 'll, 've, 're, 'd) by splitting
+        cleanPassage = cleanPassage.replace(/'s\b/gi, ' ') // milliner's -> milliner
+        cleanPassage = cleanPassage.replace(/n't\b/gi, ' not ') // won't -> wo not (will pick up 'not')
+        cleanPassage = cleanPassage.replace(/'ll\b/gi, ' will ')
+        cleanPassage = cleanPassage.replace(/'ve\b/gi, ' have ')
+        cleanPassage = cleanPassage.replace(/'re\b/gi, ' are ')
+        cleanPassage = cleanPassage.replace(/'d\b/gi, ' would ')
+        cleanPassage = cleanPassage.replace(/'/g, ' ') // Remove remaining apostrophes
         
-        // Extract all words (including 1-2 letter words and hyphenated words like 'glass-fronted')
+        // Extract all words (including hyphenated words like 'glass-fronted')
         const words = cleanPassage.match(/\b[a-zA-Z]+(?:-[a-zA-Z]+)*\b/g) || []
         // Fetch translations for these words
         const vocabMap = await translateBatch(words)
