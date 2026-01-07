@@ -14,7 +14,7 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
   const [aiProvider, setAiProvider] = useState('google-translate')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<{ lines: { en: string; bn: string }[]; vocab: Record<string, string> } | null>(null)
-  const [tooltip, setTooltip] = useState<{ word: string; meaning: string; x: number; y: number } | null>(null)
+  const [tooltip, setTooltip] = useState<{ word: string; meaning: string; x: number; y: number; showAbove: boolean } | null>(null)
   const [selectedTheme, setSelectedTheme] = useState<Theme>('modern-blue')
   const tooltipTimer = useRef<NodeJS.Timeout | null>(null)
   const pdfRef = useRef<HTMLDivElement>(null)
@@ -76,7 +76,7 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
     }
   }
 
-  const handleWordClick = (word: string, e: React.MouseEvent) => {
+  const handleWordClick = (word: string, e: React.MouseEvent<HTMLSpanElement>) => {
     // Clean word for dictionary lookup
     const cleanWord = word.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase()
     const meaning = result?.vocab[cleanWord]
@@ -84,11 +84,23 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
     if (meaning) {
       if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
       
+      // Get the clicked element's position
+      const rect = e.currentTarget.getBoundingClientRect()
+      
+      // Calculate tooltip position - center horizontally, position above word
+      const tooltipX = rect.left + rect.width / 2
+      
+      // Always position above the word, but clamp to stay in viewport
+      // The tooltip will be shifted up by translateY(-100%), so we set y = rect.top - gap
+      // Then clamp to minimum 80 (tooltip height) to prevent going off-screen
+      const tooltipY = Math.max(80, rect.top - 10)
+      
       setTooltip({
         word: cleanWord,
         meaning,
-        x: e.clientX,
-        y: e.clientY - 80
+        x: tooltipX,
+        y: tooltipY,
+        showAbove: true // Always show above
       })
 
       // Text to Speech
@@ -149,22 +161,42 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
 
           <div ref={pdfRef} className={`theme-${selectedTheme} p-6 bg-white rounded-xl shadow-sm border space-y-4`}>
             {result.lines.map((line, idx) => (
-              <div key={idx} className="sentence-container group p-5 bg-white rounded-xl border border-gray-100 hover:border-blue-400 transition-all duration-300 shadow-sm">
+              <div 
+                key={idx} 
+                className="sentence-container group p-5 bg-white rounded-xl border border-gray-100 hover:border-blue-400 transition-all duration-300 shadow-sm"
+                style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
+              >
                 <div className="flex flex-wrap gap-x-1.5 gap-y-2 mb-3">
                   {(line.en || '').split(' ').filter(Boolean).map((word, wIdx) => {
                     const clean = word.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase()
                     const hasMeaning = !!result.vocab[clean]
+                    const isSelected = tooltip?.word === clean
                     return (
                       <span
                         key={wIdx}
-                        onClick={(e) => handleWordClick(word, e)}
-                        className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors font-medium text-xl sm:text-2xl inline-block
-                          ${hasMeaning 
-                            ? 'text-blue-700 hover:bg-blue-100 decoration-blue-300 underline underline-offset-4 decoration-dashed' 
-                            : 'text-gray-800'
-                          }`}
+                        className="relative inline-block"
                       >
-                        {word}
+                        <span
+                          onClick={(e) => handleWordClick(word, e)}
+                          className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors font-medium text-xl sm:text-2xl inline-block
+                            ${hasMeaning 
+                              ? 'text-blue-700 hover:bg-blue-100 decoration-blue-300 underline underline-offset-4 decoration-dashed' 
+                              : 'text-gray-800'
+                            }`}
+                        >
+                          {word}
+                        </span>
+                        {/* Tooltip directly above this word */}
+                        {isSelected && tooltip && (
+                          <div 
+                            className="absolute z-[100] left-1/2 -translate-x-1/2 bottom-full mb-2 px-4 py-3 bg-gray-800 text-white text-sm rounded-xl shadow-2xl animate-in fade-in zoom-in-95 pointer-events-none whitespace-nowrap text-center"
+                          >
+                            <div className="font-bold border-b border-gray-600 mb-1.5 pb-1 text-blue-300 uppercase tracking-wider text-xs">{tooltip.word}</div>
+                            <div className="text-sm font-medium">{tooltip.meaning}</div>
+                            {/* Arrow pointing down to word */}
+                            <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-gray-800 rotate-45"></div>
+                          </div>
+                        )}
                       </span>
                     )
                   })}
@@ -178,20 +210,7 @@ export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerPr
         </div>
       )}
 
-      {tooltip && (
-        <div 
-          className="fixed z-[100] px-4 py-3 bg-gray-800 text-white text-sm rounded-xl shadow-2xl animate-in fade-in zoom-in-95 pointer-events-none max-w-[90vw] whitespace-normal text-center"
-          style={{ 
-            left: `${tooltip.x}px`, 
-            top: `${tooltip.y}px`,
-            transform: 'translateX(-50%)'
-          }}
-        >
-          <div className="font-bold border-b border-gray-600 mb-1.5 pb-1 text-blue-300 uppercase tracking-wider text-xs">{tooltip.word}</div>
-          <div className="text-sm font-medium">{tooltip.meaning}</div>
-          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-800 rotate-45"></div>
-        </div>
-      )}
+      {/* Tooltip is now rendered inline with each word above */}
     </div>
   )
 }
