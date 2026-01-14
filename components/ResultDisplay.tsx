@@ -50,13 +50,13 @@ export default function ResultDisplay({ html, theme }: ResultDisplayProps) {
       <div className="flex justify-end">
         <button
           onClick={handleDownloadPdf}
-          className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition flex items-center gap-2 text-sm font-medium shadow-sm"
+          className="px-4 py-2 glass-button text-slate-700 rounded-lg flex items-center gap-2 text-sm font-medium"
         >
           📥 Download PDF
         </button>
       </div>
       
-      <div className="flex-1 overflow-y-auto border rounded-xl bg-white shadow-inner">
+      <div className="flex-1 overflow-y-auto border border-white/40 rounded-xl bg-white/40 backdrop-blur-sm shadow-inner">
         <div
           ref={contentRef}
           className={`theme-${theme} formatted-content min-h-full p-6`}

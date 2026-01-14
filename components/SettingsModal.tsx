@@ -56,76 +56,76 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white rounded-lg sm:rounded-xl shadow-2xl max-w-lg w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">API কী সেটিংস</h2>
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-[110] p-3 sm:p-4">
+      <div className="glass-card rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="flex justify-between items-center p-6 border-b border-white/20 bg-white/40">
+          <h2 className="text-2xl font-bold text-slate-800 tracking-tight">API Settings</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-xl sm:text-2xl"
+            className="w-10 h-10 flex items-center justify-center rounded-full glass-button text-slate-600"
           >
             ✕
           </button>
         </div>
 
-        <div className="space-y-6">
+        <div className="p-6 max-h-[70vh] overflow-y-auto space-y-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 text-xs sm:text-sm text-blue-800">
             <p><strong>💡 টিপ:</strong> প্রতিটি AI প্রোভাইডারের জন্য আলাদা কী এখানে সংরক্ষণ করতে পারেন। এগুলো আপনার ব্রাউজারে সুরক্ষিত থাকে।</p>
           </div>
 
           <div className="space-y-4">
             {AI_PROVIDERS.map((provider) => (
-              <div key={provider.id} className="border rounded-xl p-3 sm:p-4 bg-gray-50/50">
+              <div key={provider.id} className="glass-panel border border-white/20 rounded-2xl p-4 transition-all hover:bg-white/60">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                   <div>
-                    <h4 className="font-bold text-gray-800">{provider.name}</h4>
+                    <h4 className="font-bold text-slate-800">{provider.name}</h4>
                     {provider.url && (
                       <a 
                         href={provider.url} 
                         target="_blank" 
                         rel="noopener noreferrer"
-                        className="text-xs text-blue-600 hover:underline"
+                        className="text-xs text-indigo-600 hover:underline font-medium"
                       >
-                        কী পেতে এখানে ক্লিক করুন ↗
+                        Get Key ↗
                       </a>
                     )}
                   </div>
                   
                   <div className="flex gap-2">
                     {provider.id === 'google-translate' ? (
-                      <span className="px-3 py-1.5 text-xs font-bold bg-green-100 text-green-700 rounded-lg border border-green-200">
-                        বিনামূল্যে (Free)
+                      <span className="px-3 py-1.5 text-xs font-bold bg-emerald-100/60 text-emerald-700 rounded-lg border border-emerald-200 backdrop-blur-sm">
+                        Free
                       </span>
                     ) : providerKeys[provider.id] ? (
                       <>
                         <button
                           onClick={() => toggleShowKey(provider.id)}
-                          className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition"
+                          className="px-3 py-1.5 text-xs font-bold glass-button rounded-lg text-indigo-600"
                         >
-                          {showKeys[provider.id] ? 'লুকান' : 'দেখান'}
+                          {showKeys[provider.id] ? 'Hide' : 'Show'}
                         </button>
                         <button
                           onClick={() => {
                             setEditingProvider(provider.id)
                             setNewKeyValue(providerKeys[provider.id] || '')
                           }}
-                          className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
+                          className="px-3 py-1.5 text-xs font-bold glass-button rounded-lg text-slate-600"
                         >
-                          পরিবর্তন
+                          Edit
                         </button>
                         <button
                           onClick={() => handleDeleteKey(provider.id)}
-                          className="px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition"
+                          className="px-3 py-1.5 text-xs font-bold bg-red-50 text-red-600 border border-red-100 rounded-lg hover:bg-red-100 transition-all"
                         >
-                          মুছুন
+                          Delete
                         </button>
                       </>
                     ) : (
                       <button
                         onClick={() => setEditingProvider(provider.id)}
-                        className="w-full sm:w-auto px-4 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                        className="w-full sm:w-auto px-4 py-1.5 text-xs font-bold bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 hover:scale-105 transition-all shadow-md"
                       >
-                        কী যোগ করুন +
+                        Add Key +
                       </button>
                     )}
                   </div>
@@ -190,12 +190,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         </div>
 
-        <button
-          onClick={onClose}
-          className="w-full mt-8 bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-4 rounded-xl transition text-sm sm:text-base shadow-lg"
-        >
-          বন্ধ করুন
-        </button>
+        <div className="p-6 bg-white/40 border-t border-white/20 flex flex-col gap-4">
+          <button
+            onClick={onClose}
+            className="w-full bg-slate-900 text-white font-bold py-3.5 px-4 rounded-2xl hover:bg-slate-800 hover:scale-[1.02] active:scale-100 transition-all shadow-lg"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   )

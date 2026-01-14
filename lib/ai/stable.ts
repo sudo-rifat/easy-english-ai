@@ -30,6 +30,7 @@ RULES:
 - Use "|||" as the separator.
 - Keep the Bangla natural and student-friendly.
 - For [VOCAB], provide meanings that match the context of the passage.
+- **CRITICAL**: For words with possessives (e.g., "sun's") or contractions (e.g., "don't"), include the FULL word in [VOCAB] or ensure the root word is included if appropriate.
 - Ensure every line from the original English passage is translated.
 
 Example:
@@ -72,7 +73,10 @@ export function parseStableResponse(responseContent: string | undefined | null) 
   vocabContent.split('\n').filter(l => l.includes('|||')).forEach(item => {
     const parts = item.split('|||')
     if (parts.length >= 2) {
+      // Clean word: lowercase, trim, normalize apostrophes, and remove trailing punctuation
       const word = parts[0].trim().toLowerCase()
+        .replace(/[‘’`]/g, "'")
+        .replace(/[.,?!]$/g, "")
       vocab[word] = parts[1].trim()
     }
   })

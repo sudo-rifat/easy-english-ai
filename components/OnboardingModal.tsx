@@ -62,16 +62,16 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
       />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="relative glass-card rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-300">
         
         {/* Header / Progress */}
-        <div className="bg-gray-50 px-6 py-4 border-b flex justify-between items-center">
-          <div className="flex gap-1.5">
+        <div className="bg-white/40 backdrop-blur-md px-6 py-5 border-b border-white/20 flex justify-between items-center">
+          <div className="flex gap-2">
             {[0, 1, 2, 3, 4, 5].map(i => (
               <div 
                 key={i} 
-                className={`h-2 w-6 sm:w-8 rounded-full transition-all duration-300 ${
-                  i <= step ? 'bg-blue-600' : 'bg-gray-200'
+                className={`h-1.5 w-6 sm:w-8 rounded-full transition-all duration-500 ${
+                  i <= step ? 'bg-indigo-600 shadow-sm shadow-indigo-200' : 'bg-slate-200'
                 }`} 
               />
             ))}
@@ -98,22 +98,22 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
               <div className="grid grid-cols-2 gap-4 mt-4">
                 <button
                   onClick={() => selectLanguage('bn')}
-                  className="group relative p-6 border-2 border-gray-100 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
+                  className="group relative p-6 glass-panel rounded-2xl border-2 border-transparent hover:border-indigo-400 hover:bg-white/60 transition-all duration-300"
                 >
                   <div className="text-4xl mb-2">🇧🇩</div>
-                  <div className="font-bold text-gray-800 group-hover:text-blue-700">বাংলা</div>
-                  <div className="text-xs text-gray-400 mt-1">Bangla Interface</div>
-                  {language === 'bn' && <div className="absolute top-2 right-2 text-blue-500">✔</div>}
+                  <div className="font-bold text-slate-800 group-hover:text-indigo-700">বাংলা</div>
+                  <div className="text-xs text-slate-500 mt-1">Bangla Interface</div>
+                  {language === 'bn' && <div className="absolute top-3 right-3 text-indigo-500 font-bold">✓</div>}
                 </button>
 
                 <button
                   onClick={() => selectLanguage('en')}
-                  className="group relative p-6 border-2 border-gray-100 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200"
+                  className="group relative p-6 glass-panel rounded-2xl border-2 border-transparent hover:border-indigo-400 hover:bg-white/60 transition-all duration-300"
                 >
                   <div className="text-4xl mb-2">🇺🇸</div>
-                  <div className="font-bold text-gray-800 group-hover:text-blue-700">English</div>
-                  <div className="text-xs text-gray-400 mt-1">English Interface</div>
-                  {language === 'en' && <div className="absolute top-2 right-2 text-blue-500">✔</div>}
+                  <div className="font-bold text-slate-800 group-hover:text-indigo-700">English</div>
+                  <div className="text-xs text-slate-500 mt-1">English Interface</div>
+                  {language === 'en' && <div className="absolute top-3 right-3 text-indigo-500 font-bold">✓</div>}
                 </button>
               </div>
             </div>
@@ -224,16 +224,16 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
         {/* Footer Navigation */}
         {step > 0 && step < 5 && (
-          <div className="px-6 py-4 border-t bg-gray-50 flex justify-between">
+          <div className="px-6 py-5 border-t border-white/20 bg-white/40 backdrop-blur-md flex justify-between items-center">
             <button 
               onClick={handleBack}
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 font-medium"
+              className="px-5 py-2 text-slate-600 hover:text-slate-900 font-bold glass-button rounded-xl"
             >
               Back
             </button>
             <button 
               onClick={handleNext}
-              className="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition"
+              className="px-8 py-2 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 hover:scale-105 transition-all shadow-lg"
             >
               Next
             </button>

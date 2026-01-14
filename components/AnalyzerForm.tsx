@@ -93,7 +93,7 @@ export default function AnalyzerForm({ onAnalyze, loading }: AnalyzerFormProps) 
           value={aiProvider}
           onChange={(e) => setAiProvider(e.target.value)}
           disabled={loading}
-          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm sm:text-base border border-white/40 bg-white/50 backdrop-blur-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100/50 transition-all duration-300"
         >
           {AI_PROVIDERS.map((provider) => (
             <option key={provider.id} value={provider.id}>
@@ -123,7 +123,7 @@ export default function AnalyzerForm({ onAnalyze, loading }: AnalyzerFormProps) 
               onChange={(e) => setApiKey(e.target.value)}
               disabled={loading}
               placeholder="sk-... বা আপনার-api-key..."
-              className="w-full px-3 sm:px-4 py-3 sm:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 pr-10"
+              className="w-full px-3 sm:px-4 py-3 sm:py-3 text-base border border-white/40 bg-white/50 backdrop-blur-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100/50 pr-10 transition-all duration-300"
             />
             <button
               type="button"
@@ -175,7 +175,7 @@ export default function AnalyzerForm({ onAnalyze, loading }: AnalyzerFormProps) 
           disabled={loading}
           placeholder="আপনার ইংরেজি প্যাসেজ এখানে আটকান..."
           rows={6}
-          className="w-full px-3 sm:px-4 py-3 sm:py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 resize-none"
+          className="w-full px-3 sm:px-4 py-3 sm:py-3 text-base border border-white/40 bg-white/50 backdrop-blur-sm rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100/50 resize-none transition-all duration-300"
         />
         <p className="mt-2 text-xs sm:text-sm text-gray-500">
           {passage.length} অক্ষর
@@ -186,18 +186,18 @@ export default function AnalyzerForm({ onAnalyze, loading }: AnalyzerFormProps) 
         type="button"
         onClick={handleAnalyzeClick}
         disabled={loading || !passage.trim() || (aiProvider !== 'google-translate' && !apiKey.trim())}
-        className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold py-2.5 sm:py-3 px-4 sm:px-6 text-sm sm:text-base rounded-lg hover:from-blue-600 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 transition-all duration-200 shadow-md sm:shadow-lg hover:shadow-lg sm:hover:shadow-xl"
+        className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold py-3 sm:py-3.5 px-4 sm:px-6 text-sm sm:text-base rounded-xl hover:shadow-indigo-500/30 hover:shadow-lg hover:scale-[1.02] disabled:from-slate-400 disabled:to-slate-400 disabled:scale-100 transition-all duration-300 shadow-md"
       >
         {loading ? 'বিশ্লেষণ করা হচ্ছে...' : 'প্যাসেজ বিশ্লেষণ করুন'}
       </button>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+      <div className="bg-blue-50/60 backdrop-blur-sm border border-blue-200/60 rounded-lg p-3 sm:p-4">
         <p className="text-xs sm:text-sm text-blue-800">
           <strong>💡 টিপ:</strong> আপনার API কী নিরাপদে পাঠানো হয়। কখনও আপনার API কী জনসাধারণের সাথে শেয়ার করবেন না!
         </p>
       </div>
 
-      <div className="bg-green-50 border border-green-200 rounded-lg p-3 sm:p-4">
+      <div className="bg-green-50/60 backdrop-blur-sm border border-green-200/60 rounded-lg p-3 sm:p-4">
         <p className="text-xs sm:text-sm text-green-800">
           <strong>🚀 API কী নেই?</strong> শীর্ষে রকেট বোতাম (🚀) ক্লিক করুন আমাদের প্রম্পট জেনারেটর ব্যবহার করতে। বিনামূল্যে ফরম্যাটেড টেক্সট পান যা Word, Google Docs বা শেয়ারিংয়ের জন্য প্রস্তুত!
         </p>

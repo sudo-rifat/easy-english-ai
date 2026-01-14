@@ -38,13 +38,13 @@ export default function ResponseFormatter() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Input Area */}
         <div className="space-y-4">
-          <label className="block text-sm font-medium text-gray-700">
-            Paste your AI response here (Markdown or Plain Text)
+          <label className="block text-sm font-bold text-slate-700">
+            Paste AI response (Markdown/JSON)
           </label>
           <textarea
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            className="w-full h-[500px] p-4 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-sm shadow-inner"
+            className="w-full h-[500px] p-6 border border-white/40 bg-white/50 backdrop-blur-sm rounded-2xl focus:ring-2 focus:ring-indigo-500 outline-none resize-none text-sm transition-all shadow-inner"
             placeholder="Paste the response from Gemini, ChatGPT, or Groq here..."
           />
         </div>
@@ -52,7 +52,7 @@ export default function ResponseFormatter() {
         {/* Preview Area */}
         <div className="space-y-4 flex flex-col">
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-gray-700">Live Preview</span>
+            <span className="text-sm font-bold text-slate-700">Live Preview</span>
             <ThemeSelector 
               selectedTheme={selectedTheme} 
               onThemeChange={setSelectedTheme} 
@@ -63,7 +63,8 @@ export default function ResponseFormatter() {
             {inputText ? (
               <ResultDisplay html={previewHtml} theme={selectedTheme} />
             ) : (
-              <div className="h-full border rounded-xl bg-gray-50 flex items-center justify-center text-gray-400 italic text-sm">
+              <div className="h-full border border-white/40 rounded-2xl bg-white/40 backdrop-blur-md flex flex-col items-center justify-center text-slate-400 italic text-sm gap-3 shadow-inner">
+                <div className="text-4xl opacity-50">✨</div>
                 Preview will appear here...
               </div>
             )}

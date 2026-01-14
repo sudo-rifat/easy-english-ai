@@ -32,18 +32,18 @@ export default function PromptGenerator({ isOpen, onClose }: PromptGeneratorProp
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[100] p-4 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-[95%] sm:w-full max-w-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-black/40 bg-opacity-60 flex items-center justify-center z-[110] p-4 backdrop-blur-md">
+      <div className="glass-card rounded-3xl shadow-2xl w-[95%] sm:w-full max-w-2xl flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
         
         {/* Header */}
-        <div className="flex justify-between items-center p-5 border-b border-gray-100 flex-shrink-0">
+        <div className="flex justify-between items-center p-6 border-b border-white/20 bg-white/40 flex-shrink-0">
           <div>
-            <h2 className="text-2xl font-bold text-gray-800">প্রম্পট জেনারেটর</h2>
-            <p className="text-xs text-gray-500 mt-1">API কী ছাড়াই স্মার্ট বিশ্লেষণ পাওয়ার সেরা উপায়</p>
+            <h2 className="text-2xl font-bold text-slate-800 tracking-tight">Prompt Generator</h2>
+            <p className="text-xs text-slate-500 mt-1 font-medium">Get analysis without API keys</p>
           </div>
           <button
             onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 text-gray-600 transition"
+            className="w-10 h-10 flex items-center justify-center rounded-full glass-button text-slate-600"
           >
             ✕
           </button>
@@ -62,25 +62,25 @@ export default function PromptGenerator({ isOpen, onClose }: PromptGeneratorProp
 
           {/* Controls */}
           <div className="flex flex-col sm:flex-row gap-3 mb-5">
-            <div className="flex p-1 bg-gray-100 rounded-lg flex-1">
+            <div className="flex p-1.5 glass-panel rounded-xl flex-1 backdrop-blur-md">
               <button
                 onClick={() => setMode('standard')}
-                className={`flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-all ${mode === 'standard' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`flex-1 py-2 px-3 text-sm font-bold rounded-lg transition-all ${mode === 'standard' ? 'bg-white shadow-md text-indigo-600' : 'text-slate-500 hover:text-slate-700 font-medium'}`}
               >
                 Standard (Text)
               </button>
               <button
                 onClick={() => setMode('advanced')}
-                className={`flex-1 py-2 px-3 text-sm font-semibold rounded-md transition-all ${mode === 'advanced' ? 'bg-white shadow text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}
+                className={`flex-1 py-2 px-3 text-sm font-bold rounded-lg transition-all ${mode === 'advanced' ? 'bg-white shadow-md text-purple-600' : 'text-slate-500 hover:text-slate-700 font-medium'}`}
               >
                 Advanced (JSON)
               </button>
             </div>
 
-            <div className="flex p-1 bg-gray-100 rounded-lg shrink-0">
+            <div className="flex p-1.5 glass-panel rounded-xl shrink-0 backdrop-blur-md">
                <button
                 onClick={() => setShowPreview(!showPreview)}
-                className={`px-4 py-2 text-sm font-semibold rounded-md transition-all ${showPreview ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-white'}`}
+                className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${showPreview ? 'bg-indigo-100 text-indigo-700' : 'text-slate-600 font-medium hover:bg-white/50'}`}
               >
                 {showPreview ? 'Hide Preview' : 'Show Preview'}
               </button>
@@ -96,26 +96,26 @@ export default function PromptGenerator({ isOpen, onClose }: PromptGeneratorProp
                 <textarea
                   value={passage}
                   onChange={(e) => setPassage(e.target.value)}
-                  placeholder="এখানে ইংরেজি টেক্সট পেস্ট করুন..."
+                  placeholder="Paste English text here..."
                   rows={4}
-                  className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none transition-shadow shadow-sm focus:shadow-md outline-none"
+                  className="w-full px-4 py-3 text-sm border border-white/40 bg-white/50 backdrop-blur-sm rounded-2xl focus:ring-2 focus:ring-indigo-500 resize-none transition-all shadow-sm outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   onClick={handleCopyPrompt}
-                  className="flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-lg hover:shadow-xl active:scale-95"
+                  className="flex items-center justify-center gap-2 py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-bold rounded-2xl transition hover:shadow-indigo-500/20 shadow-lg hover:scale-[1.02] active:scale-95"
                 >
                   <span>📋</span>
-                  {copied ? 'কপি হয়েছে!' : 'সম্পূর্ণ প্রম্পট কপি করুন'}
+                  {copied ? 'Copied!' : 'Copy Full Prompt'}
                 </button>
                 <button
                   onClick={handleCopySystemPrompt}
-                  className="flex items-center justify-center gap-2 py-3 px-4 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 font-bold rounded-xl transition hover:bg-gray-50 active:scale-95"
+                  className="flex items-center justify-center gap-2 py-3.5 px-4 glass-button text-slate-700 font-bold rounded-2xl transition active:scale-95"
                 >
                   <span>📝</span>
-                  {copied ? 'কপি হয়েছে!' : 'শুধু রুলস কপি করুন'}
+                  {copied ? 'Copied!' : 'Copy System Rules'}
                 </button>
               </div>
 

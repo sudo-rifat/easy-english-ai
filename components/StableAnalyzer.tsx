@@ -1,537 +1,486 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { storage } from '@/lib/storage'
-import ThemeSelector, { Theme } from './ThemeSelector'
-import { parseStableResponse } from '@/lib/ai/stable'
-import Tesseract from 'tesseract.js'
-import Cropper, { ReactCropperElement } from 'react-cropper'
-import 'cropperjs/dist/cropper.css'
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Image as ImageIcon, Download, Loader2, Trash2, Languages, X, ChevronDown, Check } from 'lucide-react';
+import Tesseract from 'tesseract.js';
+import { ImageEditor } from './ImageEditor';
+import { InteractiveText } from './InteractiveText';
+import { splitIntoLines, cleanOCRText } from '@/lib/textProcessing';
+import { 
+  translateSentences, 
+  fetchWordMeanings, 
+  extractUniqueWords 
+} from '@/lib/translationService';
+import { translateWithAI } from '@/lib/ai/aiTranslation';
+import { storage } from '@/lib/storage';
 
-interface StableAnalyzerProps {
-  initialPassage?: string
+type TranslationProvider = 'google' | 'gemini' | 'groq' | 'together' | 'openai' | 'huggingface';
+
+const PROVIDER_OPTIONS: { id: TranslationProvider; name: string; description: string; requiresKey: boolean }[] = [
+  { id: 'google', name: 'Google Translate', description: 'Free, fast translation', requiresKey: false },
+  { id: 'gemini', name: 'Google Gemini', description: 'Gemini 2.0 Flash', requiresKey: true },
+  { id: 'groq', name: 'Groq Llama 3.1', description: 'Fast AI inference', requiresKey: true },
+  { id: 'together', name: 'Together AI', description: 'Open source models', requiresKey: true },
+  { id: 'openai', name: 'OpenAI GPT', description: 'GPT-4 powered', requiresKey: true },
+  { id: 'huggingface', name: 'Hugging Face', description: 'Community models', requiresKey: true },
+];
+
+interface LineData {
+  text: string;
+  translation?: string;
 }
 
-export default function StableAnalyzer({ initialPassage = '' }: StableAnalyzerProps) {
-  const [passage, setPassage] = useState(initialPassage)
-  const [aiProvider, setAiProvider] = useState('google-translate')
-  const [loading, setLoading] = useState(false)
-  const [isScanning, setIsScanning] = useState(false)
-  const [debugImageUrl, setDebugImageUrl] = useState<string | null>(null)
+export default function StableAnalyzer() {
+  const [mounted, setMounted] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [extractedLines, setExtractedLines] = useState<LineData[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
+  const [showImageEditor, setShowImageEditor] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [wordMeanings, setWordMeanings] = useState<Map<string, string>>(new Map());
   
-  // Cropper states
-  const [imageToCrop, setImageToCrop] = useState<string | null>(null)
-  const [lastAppliedImage, setLastAppliedImage] = useState<string | null>(null) // Committed snapshot for Scan
-  const cropperRef = useRef<ReactCropperElement>(null)
-
-  const [result, setResult] = useState<{ lines: { en: string; bn: string }[]; vocab: Record<string, string> } | null>(null)
-  const [tooltip, setTooltip] = useState<{ word: string; meaning: string; x: number; y: number; showAbove: boolean } | null>(null)
+  // AI Provider States
+  const [translationProvider, setTranslationProvider] = useState<TranslationProvider>('google');
+  const [apiKey, setApiKey] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
   
-  // Initialize from localStorage if available, otherwise default to modern-blue
-  const [selectedTheme, setSelectedTheme] = useState<Theme>('modern-blue')
+  // User Feedback States
+  const [fontSize, setFontSize] = useState(20);
+  const [binarizedImage, setBinarizedImage] = useState<string | null>(null);
+  const [showBinarizedPreview, setShowBinarizedPreview] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load saved theme on mount
   useEffect(() => {
-    const savedTheme = localStorage.getItem('easy-english-theme') as Theme
-    if (savedTheme) {
-      setSelectedTheme(savedTheme)
+    setMounted(true);
+    // Load saved provider and API key
+    const savedProvider = storage.getSavedProvider();
+    if (savedProvider && ['google', 'gemini', 'groq'].includes(savedProvider)) {
+      setTranslationProvider(savedProvider as TranslationProvider);
+      const savedKey = storage.getProviderKey(savedProvider);
+      if (savedKey) setApiKey(savedKey);
     }
-  }, [])
+  }, []);
 
-  // Save theme to localStorage when it changes
+  // Update API key when provider changes
   useEffect(() => {
-    localStorage.setItem('easy-english-theme', selectedTheme)
-  }, [selectedTheme])
-  const tooltipTimer = useRef<NodeJS.Timeout | null>(null)
-  const pdfRef = useRef<HTMLDivElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    const savedProvider = storage.getSavedProvider()
-    if (savedProvider) setAiProvider(savedProvider)
-  }, [])
-
-  const handleDownloadPdf = async () => {
-    if (!pdfRef.current) return
-
-    const html2pdf = (await import('html2pdf.js')).default
-    const element = pdfRef.current
-    const opt = {
-      margin: [0.5, 0.5] as [number, number],
-      filename: `EasyEnglish_Reader_${new Date().toLocaleDateString()}.pdf`,
-      image: { type: 'jpeg' as const, quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const }
+    if (translationProvider !== 'google') {
+      const savedKey = storage.getProviderKey(translationProvider);
+      if (savedKey) setApiKey(savedKey);
+      else setApiKey('');
     }
+  }, [translationProvider]);
 
-    html2pdf().from(element).set(opt).save()
-  }
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setSelectedImage(e.target?.result as string);
+        setShowImageEditor(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
-  const handleAnalyze = async () => {
-    if (!passage.trim()) return
+  const handleScan = async (processedImage: string) => {
+    setShowImageEditor(false);
+    setIsProcessing(true);
+    setOcrProgress(0);
+    setBinarizedImage(processedImage);
 
-    setLoading(true)
-    setResult(null)
-    
     try {
-      const apiKey = storage.getProviderKey(aiProvider)
-      if (!apiKey && aiProvider !== 'google-translate') {
-        alert('প্রথমে সেটিংস থেকে API কী সেট করুন')
-        setLoading(false)
-        return
-      }
+      const result = await Tesseract.recognize(processedImage, 'eng', {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            setOcrProgress(Math.round(m.progress * 100));
+          }
+        },
+      });
 
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          passage: passage.trim(),
-          aiProvider,
-          apiKey: apiKey || '',
-          mode: 'stable'
-        }),
-      })
-
-      const data = await response.json()
-      if (data.error) throw new Error(data.error)
-
-      setResult(parseStableResponse(data.analysis))
-    } catch (error: any) {
-      alert('Error: ' + error.message)
+      const cleanedText = cleanOCRText(result.data.text);
+      setInputText(cleanedText);
+      await processText(cleanedText);
+    } catch (error) {
+      console.error('OCR Error:', error);
     } finally {
-      setLoading(false)
+      setIsProcessing(false);
+      setSelectedImage(null);
     }
-  }
+  };
 
-  const handleWordClick = (word: string, e: React.MouseEvent<HTMLSpanElement>) => {
-    // Clean word for dictionary lookup
-    const cleanWord = word.replace(/[.,/#!$%^&*;:{}=_`~()"'“”‘’]/g, "").toLowerCase()
-    const meaning = result?.vocab[cleanWord]
+  const processText = async (text: string) => {
+    const lines = splitIntoLines(text);
     
-    if (meaning) {
-      if (tooltipTimer.current) clearTimeout(tooltipTimer.current)
-      
-      // Get the clicked element's position
-      const rect = e.currentTarget.getBoundingClientRect()
-      
-      // Calculate tooltip position - center horizontally, position above word
-      const tooltipX = rect.left + rect.width / 2
-      
-      // Always position above the word, but clamp to stay in viewport
-      // The tooltip will be shifted up by translateY(-100%), so we set y = rect.top - gap
-      // Then clamp to minimum 80 (tooltip height) to prevent going off-screen
-      const tooltipY = Math.max(80, rect.top - 10)
-      
-      setTooltip({
-        word: cleanWord,
-        meaning,
-        x: tooltipX,
-        y: tooltipY,
-        showAbove: true // Always show above
-      })
-
-      // Text to Speech
-      const utterance = new SpeechSynthesisUtterance(word)
-      utterance.lang = 'en-US'
-      window.speechSynthesis.speak(utterance)
-
-      tooltipTimer.current = setTimeout(() => {
-        setTooltip(null)
-      }, 4000)
-    }
-  }
-
-  const handlePaste = async () => {
+    // Initialize lines without translations
+    setExtractedLines(lines.map(line => ({ text: line })));
+    
+    // Start translation process
+    setIsTranslating(true);
+    
     try {
-      const text = await navigator.clipboard.readText()
-      setPassage(text)
-    } catch (err) {
-      console.error('Failed to read clipboard contents: ', err)
-      // Fallback for Firefox or if permission denied - just focus
-      const textarea = document.querySelector('textarea')
-      if (textarea) {
-        textarea.focus()
-        document.execCommand('paste')
+      if (translationProvider === 'google') {
+        // Use Google Translate
+        const sentences = lines.filter(line => line.trim().length > 0);
+        const [sentenceTranslations, meanings] = await Promise.all([
+          translateSentences(sentences, 5, 100),
+          fetchWordMeanings(extractUniqueWords(text), 10, 150),
+        ]);
+        
+        setExtractedLines(lines.map(line => ({
+          text: line,
+          translation: sentenceTranslations.get(line) || undefined,
+        })));
+        setWordMeanings(meanings);
+      } else {
+        // Use AI for line-by-line translation, Google for word meanings
+        if (!apiKey) {
+          throw new Error('API key required - please enter your API key above');
+        }
+        
+        // Save the key for future use
+        storage.saveProviderKey(translationProvider, apiKey);
+        
+        // Get AI translations for lines AND Google translations for word meanings in parallel
+        const [aiResult, googleMeanings] = await Promise.all([
+          translateWithAI(text, translationProvider, apiKey),
+          fetchWordMeanings(extractUniqueWords(text), 10, 150), // Always Google for word meanings
+        ]);
+        
+        // Update lines with AI translations
+        setExtractedLines(lines.map(line => ({
+          text: line,
+          translation: aiResult.lines.get(line) || undefined,
+        })));
+        
+        // Use Google Translate for word meanings (more reliable)
+        setWordMeanings(googleMeanings);
       }
+    } catch (error) {
+      console.error('Translation error:', error);
+    } finally {
+      setIsTranslating(false);
     }
-  }
+  };
 
-  // Helper to preprocess image (Adaptive Thresholding - Bradley's Method)
-  const preprocessImage = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image()
-      img.onload = () => {
-        const canvas = document.createElement('canvas')
-        canvas.width = img.width
-        canvas.height = img.height
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return reject('No canvas context')
-        
-        ctx.drawImage(img, 0, 0)
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-        const data = imageData.data
-        const width = canvas.width
-        const height = canvas.height
-        
-        // 1. Convert to Grayscale
-        const gray = new Uint8ClampedArray(width * height)
-        for (let i = 0; i < width * height; i++) {
-          const r = data[i * 4]
-          const g = data[i * 4 + 1]
-          const b = data[i * 4 + 2]
-          gray[i] = (r * 0.299 + g * 0.587 + b * 0.114)
-        }
-
-        // 2. Compute Integral Image
-        const integral = new Int32Array(width * height)
-        for (let x = 0; x < width; x++) {
-          let sum = 0
-          for (let y = 0; y < height; y++) {
-            const index = y * width + x
-            sum += gray[index]
-            if (x === 0) integral[index] = sum
-            else integral[index] = integral[index - 1] + sum
-          }
-        }
-
-        // 3. Adaptive Thresholding
-        const windowSize = Math.floor(width / 8) // Dynamic window size
-        const s2 = Math.floor(windowSize / 2)
-        const t = 0.15 // Threshold constant (15%)
-        
-        // Correct 2D Integral Image calculation
-        const integral2 = new Int32Array(width * height)
-        for (let y = 0; y < height; y++) {
-          let rowSum = 0
-          for (let x = 0; x < width; x++) {
-            const index = y * width + x
-            rowSum += gray[index]
-            if (y === 0) integral2[index] = rowSum
-            else integral2[index] = integral2[(y - 1) * width + x] + rowSum
-          }
-        }
-
-        // Apply Threshold
-        for (let x = 0; x < width; x++) {
-          for (let y = 0; y < height; y++) {
-            const index = y * width + x
-            
-            const x1 = Math.max(x - s2, 0)
-            const x2 = Math.min(x + s2, width - 1)
-            const y1 = Math.max(y - s2, 0)
-            const y2 = Math.min(y + s2, height - 1)
-            
-            const count = (x2 - x1 + 1) * (y2 - y1 + 1)
-            
-            // Sum = I(x2,y2) - I(x2, y1-1) - I(x1-1, y2) + I(x1-1, y1-1)
-            let sum = integral2[y2 * width + x2]
-            if (y1 > 0) sum -= integral2[(y1 - 1) * width + x2]
-            if (x1 > 0) sum -= integral2[y2 * width + (x1 - 1)]
-            if (x1 > 0 && y1 > 0) sum += integral2[(y1 - 1) * width + (x1 - 1)]
-            
-            const value = gray[index]
-            // const avg = sum / count -> unused
-            
-            // If pixel is T% darker than average, it's black
-            const color = (value * count) < (sum * (1.0 - t)) ? 0 : 255
-            
-            data[index * 4] = color
-            data[index * 4 + 1] = color
-            data[index * 4 + 2] = color
-          }
-        }
-        
-        ctx.putImageData(imageData, 0, 0)
-        resolve(canvas.toDataURL('image/png'))
-      }
-      img.onerror = reject
-      img.src = URL.createObjectURL(file)
-    })
-  }
-
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    console.log('File select triggered. File:', file?.name)
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = () => {
-      console.log('FileReader loaded. Result length:', reader.result?.toString().length)
-      setImageToCrop(reader.result as string)
-      // Reset input value
-      if (fileInputRef.current) fileInputRef.current.value = ''
+  const handleTextSubmit = async () => {
+    if (inputText.trim()) {
+      await processText(inputText);
     }
-    reader.onerror = (err) => console.error('FileReader error:', err)
-    reader.readAsDataURL(file)
-  }
+  };
 
-  const handleCropAndScan = async () => {
-    try {
-      setIsScanning(true)
-      
-      // Use lastAppliedImage if user clicked Apply, otherwise use current crop
-      let imageToProcess: string | null = null
-      
-      if (lastAppliedImage) {
-        // Use the committed (Applied) image
-        imageToProcess = lastAppliedImage
-      } else if (cropperRef.current) {
-        // No Apply was clicked, use current crop state
-        const croppedCanvas = cropperRef.current.cropper.getCroppedCanvas()
-        if (croppedCanvas) {
-          imageToProcess = croppedCanvas.toDataURL('image/png')
-        }
-      }
+  const handleClear = () => {
+    setInputText('');
+    setExtractedLines([]);
+    setWordMeanings(new Map());
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
-      if (!imageToProcess) {
-        setIsScanning(false)
-        return
-      }
-
-      // Convert dataURL to blob/file for preprocessor
-      const response = await fetch(imageToProcess)
-      const blob = await response.blob()
-      const file = new File([blob], "cropped.png", { type: "image/png" })
-
-      // Preprocess (Adaptive Thresholding)
-      const processedImageUrl = await preprocessImage(file)
-      setDebugImageUrl(processedImageUrl)
-      setImageToCrop(null) // Close cropper
-      setLastAppliedImage(null) // Reset for next session
-      
-      // OCR Scan
-      const { data: { text } } = await Tesseract.recognize(
-        processedImageUrl,
-        'eng',
-        { logger: m => console.log(m) }
-      )
-      
-      const cleanText = text.replace(/\s+/g, ' ').trim()
-      if (cleanText) {
-        setPassage(prev => prev ? prev + '\n\n' + cleanText : cleanText)
-      }
-      setIsScanning(false)
-
-    } catch (err) {
-      console.error('OCR Error:', err)
-      alert('Failed to extract text. Please try again.')
-      setIsScanning(false)
+  const handleExportPDF = async () => {
+    const html2pdf = (await import('html2pdf.js')).default;
+    const element = document.getElementById('text-analysis-content');
+    if (element) {
+      const opt = {
+        margin: 0.5,
+        filename: 'english-analysis.pdf',
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in' as const, format: 'letter' as const, orientation: 'portrait' as const },
+      };
+      html2pdf().set(opt).from(element).save();
     }
-  }
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-4 bg-white p-4 rounded-xl shadow-sm border">
-        <div className="flex justify-between items-center">
-          <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-            ইংরেজি প্যাসেজ
-            {isScanning && <span className="text-xs text-blue-600 animate-pulse font-normal">(Scanning image... please wait)</span>}
-          </label>
-          <div className="flex gap-2">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handleFileSelect}
-            />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-100"
-              title="Upload image to extract text"
-              disabled={isScanning}
-            >
-              📷 Upload Image
-            </button>
-            <button
-              onClick={handlePaste}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors border border-blue-100"
-              title="Paste text from clipboard"
-            >
-              📋 Paste
-            </button>
-          </div>
-        </div>
-        <textarea
-          value={passage}
-          onChange={(e) => setPassage(e.target.value)}
-          placeholder="আপনার ইংরেজি প্যাসেজ এখানে দিন (লাইন-বাই-লাইন অনুবাদের জন্য)..."
-          className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 min-h-[150px] resize-none text-base"
-        />
-        
-        {/* Debug View for OCR Preprocessing */}
-        {debugImageUrl && (
-          <div className="mt-4 p-4 border rounded-lg bg-gray-50">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-semibold text-gray-500 uppercase">Debug: OCR Input Image (Binarized)</span>
-              <button 
-                onClick={() => setDebugImageUrl(null)}
-                className="text-xs text-red-500 hover:text-red-700"
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6 max-w-5xl mx-auto"
+    >
+      {/* Input Section */}
+      <div className="glass-card">
+        <h2 className="text-xl font-bold mb-2 gradient-text">
+          Input Text or Upload Image
+        </h2>
+        <p className="text-sm text-gray-500 mb-4">
+          টেক্সট লিখুন অথবা ছবি আপলোড করুন
+        </p>
+
+        {/* Translation Provider Selection - Modern Dropdown */}
+        <div className="mb-4 p-4 rounded-xl bg-gradient-to-r from-indigo-50/80 to-purple-50/80 border border-indigo-100/50">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <span className="text-sm font-semibold text-gray-700">Translation Engine:</span>
+            
+            {/* Custom Dropdown */}
+            <div className="relative flex-1 max-w-xs">
+              <button
+                onClick={() => setShowDropdown(!showDropdown)}
+                className="w-full flex items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all text-left"
               >
-                Hide
+                <div className="flex items-center gap-3">
+                  <div className={`w-2.5 h-2.5 rounded-full ${
+                    PROVIDER_OPTIONS.find(p => p.id === translationProvider)?.requiresKey 
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-500' 
+                      : 'bg-green-500'
+                  }`} />
+                  <div>
+                    <p className="font-medium text-gray-800 text-sm">
+                      {PROVIDER_OPTIONS.find(p => p.id === translationProvider)?.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {PROVIDER_OPTIONS.find(p => p.id === translationProvider)?.description}
+                    </p>
+                  </div>
+                </div>
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
               </button>
+
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {showDropdown && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="absolute z-50 mt-2 w-full bg-white rounded-xl border border-gray-200 shadow-xl overflow-hidden"
+                  >
+                    {PROVIDER_OPTIONS.map((provider) => (
+                      <button
+                        key={provider.id}
+                        onClick={() => {
+                          setTranslationProvider(provider.id);
+                          setShowDropdown(false);
+                        }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-indigo-50 transition-colors ${
+                          translationProvider === provider.id ? 'bg-indigo-50' : ''
+                        }`}
+                      >
+                        <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                          provider.requiresKey 
+                            ? 'bg-gradient-to-r from-indigo-500 to-purple-500' 
+                            : 'bg-green-500'
+                        }`} />
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-800 text-sm">{provider.name}</p>
+                          <p className="text-xs text-gray-500">{provider.description}</p>
+                        </div>
+                        {translationProvider === provider.id && (
+                          <Check className="w-4 h-4 text-indigo-600" />
+                        )}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <img 
-              src={debugImageUrl} 
-              alt="Processed for OCR" 
-              className="w-full max-h-60 object-contain border bg-white" 
-            />
           </div>
-        )}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <select
-            value={aiProvider}
-            onChange={(e) => setAiProvider(e.target.value)}
-            className="flex-1 p-2.5 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
-          >
-            <option value="gemini">Google Gemini</option>
-            <option value="google-translate">Google Translate (Free)</option>
-            <option value="groq">Groq Llama 3.1</option>
-            <option value="together">Together AI</option>
-            <option value="openai">OpenAI</option>
-            <option value="huggingface">Hugging Face</option>
-          </select>
+
+          {/* API Key Input (for AI providers) */}
+          {PROVIDER_OPTIONS.find(p => p.id === translationProvider)?.requiresKey && (
+            <div className="mt-3 flex items-center gap-2">
+              <input
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={`Enter ${PROVIDER_OPTIONS.find(p => p.id === translationProvider)?.name} API Key...`}
+                className="flex-1 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent shadow-sm"
+              />
+              {apiKey && (
+                <span className="flex items-center gap-1 text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-lg">
+                  <Check className="w-3 h-3" /> Saved
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        <textarea
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          placeholder="Paste or type English text here... / এখানে ইংরেজি টেক্সট পেস্ট করুন বা লিখুন..."
+          className="glass-input w-full h-40 resize-none mb-6 text-lg"
+        />
+
+        <div className="flex flex-wrap gap-3">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageUpload}
+            accept="image/*"
+            style={{ display: 'none' }}
+          />
+          
           <button
-            type="button"
-            onClick={handleAnalyze}
-            disabled={loading}
-            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 transition shadow-md sm:shadow-lg"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex items-center gap-2 px-5 py-3 rounded-xl bg-white/50 border border-white/60 hover:bg-white/80 font-medium transition-all shadow-sm"
           >
-            {loading ? 'প্রক্রিয়া করা হচ্ছে...' : 'ইন্টারেক্টিভ বিশ্লেষণ'}
+            <ImageIcon className="w-5 h-5 text-indigo-600" />
+            <span className="text-gray-700">Upload Image</span>
           </button>
+
+          <button
+            onClick={handleTextSubmit}
+            disabled={!inputText.trim() || isTranslating || (translationProvider !== 'google' && !apiKey)}
+            className="gradient-btn disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ml-auto"
+          >
+            {isTranslating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Translating...
+              </>
+            ) : (
+              <>
+                <Languages className="w-5 h-5" />
+                Analyze & Translate
+              </>
+            )}
+          </button>
+
+          {(inputText || extractedLines.length > 0) && (
+            <button
+              onClick={handleClear}
+              className="flex items-center gap-2 px-5 py-3 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 font-medium transition-colors border border-red-100"
+            >
+              <Trash2 className="w-5 h-5" />
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
-      {result && (
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="flex flex-wrap items-center justify-between gap-4 bg-gray-50 p-3 rounded-lg border border-gray-100">
-            <ThemeSelector selectedTheme={selectedTheme} onThemeChange={setSelectedTheme} />
-            <button
-              onClick={handleDownloadPdf}
-              className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 transition flex items-center gap-2 text-sm font-medium shadow-sm"
-            >
-              📥 Download PDF
-            </button>
+      {/* Processing Indicator */}
+      {isProcessing && (
+        <div className="glass-card">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-indigo-50 rounded-full">
+               <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+            </div>
+            <div className="flex-1">
+              <p className="font-medium text-gray-700">Scanning image...</p>
+              <div className="mt-2 h-2 bg-gray-100 rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-indigo-600 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${ocrProgress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1 font-medium">{ocrProgress}% complete</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Results Section */}
+      {extractedLines.length > 0 && (
+        <div className="glass-card">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 border-b border-gray-100 pb-4 gap-4">
+            <div>
+              <h2 className="text-xl font-bold gradient-text">Analysis Results</h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Click on words to see meanings / হাইলাইট করা শব্দে ক্লিক করুন
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-3 md:gap-4">
+               {binarizedImage && (
+                <button
+                  onClick={() => setShowBinarizedPreview(true)}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                >
+                  View Image
+                </button>
+              )}
+
+              <div className="flex items-center gap-2 bg-white/50 px-3 py-1.5 rounded-lg border border-white/60">
+                <span className="text-xs font-medium text-gray-500">Size</span>
+                <input 
+                  type="range" 
+                  min="14" 
+                  max="32" 
+                  value={fontSize} 
+                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  className="w-20 md:w-24 h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                />
+              </div>
+
+              <button
+                onClick={handleExportPDF}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/50 border border-white/60 hover:bg-white/80 font-medium transition-colors text-sm ml-auto md:ml-0"
+              >
+                <Download className="w-4 h-4 text-gray-600" />
+                Export PDF
+              </button>
+            </div>
           </div>
 
-          <div ref={pdfRef} className={`theme-${selectedTheme} p-6 bg-white rounded-xl shadow-sm border space-y-4`}>
-            {result.lines.map((line, idx) => (
-              <div 
-                key={idx} 
-                className="sentence-container group p-5 bg-white rounded-xl border border-[var(--theme-border)] hover:border-[var(--theme-accent)] transition-all duration-300 shadow-sm"
-                style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}
+          <div id="text-analysis-content" className="space-y-6">
+            {extractedLines.map((line, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="p-6 rounded-2xl bg-white/40 border border-white/40 shadow-sm hover:shadow-md transition-all duration-300 overflow-visible"
               >
-                <div className="flex flex-wrap gap-x-1.5 gap-y-2 mb-3">
-                  {(line.en || '').split(' ').filter(Boolean).map((word, wIdx) => {
-                    // Clean word: Remove possessives/contractions FIRST, then punctuation
-                    // This handles "milliner's." -> "milliner." -> "milliner"
-                    let clean = word.replace(/'s/gi, '').replace(/n't/gi, '')
-                    clean = clean.replace(/[.,/#!$%^&*;:{}=_`~()"'“”‘’?!]/g, "").toLowerCase()
-                    const hasMeaning = !!result.vocab[clean]
-                    const isSelected = tooltip?.word === clean
-                    return (
-                      <span
-                        key={wIdx}
-                        className="relative inline-block"
-                      >
-                        <span
-                          onClick={(e) => handleWordClick(word, e)}
-                          className={`cursor-pointer px-1.5 py-0.5 rounded transition-colors font-medium text-xl sm:text-2xl inline-block
-                            ${hasMeaning 
-                              ? 'text-[var(--theme-primary)] hover:bg-[var(--theme-border)] decoration-[var(--theme-accent)] underline underline-offset-4 decoration-dashed' 
-                              : 'text-[var(--theme-text)]'
-                            }`}
-                        >
-                          {word}
-                        </span>
-                        {/* Tooltip directly above this word */}
-                        {isSelected && tooltip && (
-                          <div 
-                            className="absolute z-[100] left-1/2 -translate-x-1/2 bottom-full mb-2 px-4 py-3 bg-gray-800 text-white text-sm rounded-xl shadow-2xl animate-in fade-in zoom-in-95 pointer-events-none whitespace-nowrap text-center"
-                          >
-                            <div className="font-bold border-b border-gray-600 mb-1.5 pb-1 text-blue-300 uppercase tracking-wider text-xs">{tooltip.word}</div>
-                            <div className="text-sm font-medium">{tooltip.meaning}</div>
-                            {/* Arrow pointing down to word */}
-                            <div className="absolute left-1/2 -translate-x-1/2 -bottom-1.5 w-3 h-3 bg-gray-800 rotate-45"></div>
-                          </div>
-                        )}
-                      </span>
-                    )
-                  })}
+                <div className="flex items-start gap-4">
+                  <span className="flex-shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 text-xs font-bold font-mono border border-indigo-100 mt-1">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <div className="flex-1">
+                    <InteractiveText 
+                      text={line.text} 
+                      translation={line.translation}
+                      wordMeanings={wordMeanings}
+                      isTranslationLoading={isTranslating && !line.translation}
+                      fontSize={fontSize}
+                    />
+                  </div>
                 </div>
-                <div className="text-gray-600 font-medium border-t pt-2 border-gray-100">
-                  {line.bn || 'অনুবাদ পাওয়া যায়নি'}
-                </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Cropper Modal - Full Screen */}
-      {imageToCrop && (
-        <div className="fixed inset-0 z-[9999] bg-black flex flex-col">
-          {/* Cropper fills most of the screen */}
-          <div className="flex-1 min-h-0 bg-gray-900">
-            <Cropper
-              ref={cropperRef}
-              style={{ height: '100%', width: '100%' }}
-              initialAspectRatio={0}
-              src={imageToCrop}
-              viewMode={0}
-              dragMode="move"
-              guides={true}
-              minCropBoxHeight={10}
-              minCropBoxWidth={10}
-              background={false} 
-              responsive={true}
-              autoCropArea={0.9}
-              checkOrientation={false}
-              zoomable={true}
-              scalable={true}
-              toggleDragModeOnDblclick={false}
-            />
-          </div>
-
-          {/* Compact Bottom Toolbar */}
-          <div className="flex items-center justify-between gap-2 p-2 bg-gray-900 border-t border-gray-700">
-            <div className="flex items-center gap-1">
-              <button type="button" onClick={() => cropperRef.current?.cropper.zoom(0.1)} className="p-2 text-white hover:bg-gray-700 rounded" title="Zoom In">➕</button>
-              <button type="button" onClick={() => cropperRef.current?.cropper.zoom(-0.1)} className="p-2 text-white hover:bg-gray-700 rounded" title="Zoom Out">➖</button>
-              <button type="button" onClick={() => cropperRef.current?.cropper.rotate(-90)} className="p-2 text-white hover:bg-gray-700 rounded" title="Rotate Left">↺</button>
-              <button type="button" onClick={() => cropperRef.current?.cropper.rotate(90)} className="p-2 text-white hover:bg-gray-700 rounded" title="Rotate Right">↻</button>
-              <button type="button" onClick={() => cropperRef.current?.cropper.reset()} className="px-2 py-1 text-xs text-gray-300 hover:bg-gray-700 rounded" title="Reset">Reset</button>
-              
-              {/* Apply Crop Button - commits the crop, then you can rotate */}
-              <button 
-                type="button" 
-                onClick={() => {
-                  const cropper = cropperRef.current?.cropper
-                  if (!cropper) return
-                  const croppedCanvas = cropper.getCroppedCanvas()
-                  if (croppedCanvas) {
-                    const dataUrl = croppedCanvas.toDataURL('image/png')
-                    setImageToCrop(dataUrl) // Continue editing the cropped image
-                    setLastAppliedImage(dataUrl) // Save as committed snapshot for Scan
-                  }
-                }}
-                className="px-2 py-1 text-xs text-yellow-300 bg-yellow-900/50 hover:bg-yellow-800 rounded font-medium"
-                title="Apply Crop (commits current selection, then you can rotate/edit more)"
-              >
-                ✂️ Apply
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => setImageToCrop(null)} className="px-4 py-2 text-sm text-gray-300 hover:bg-gray-700 rounded-lg">Cancel</button>
-              <button type="button" onClick={handleCropAndScan} disabled={isScanning} className="px-5 py-2 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-lg">
-                {isScanning ? 'Processing...' : '✅ Scan'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Image Editor Modal - Rendered via Portal */}
+      {mounted && selectedImage && createPortal(
+        <ImageEditor
+          isOpen={showImageEditor}
+          imageUrl={selectedImage}
+          onClose={() => {
+            setShowImageEditor(false);
+            setSelectedImage(null);
+          }}
+          onScan={handleScan}
+        />,
+        document.body
       )}
-      {/* Tooltip is now rendered inline with each word above */}
-    </div>
-  )
+
+      {/* Binarized Image Preview Modal - Rendered via Portal for safety */}
+      {mounted && showBinarizedPreview && binarizedImage && createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setShowBinarizedPreview(false)}>
+          <div className="bg-white rounded-2xl p-4 max-w-2xl w-full max-h-[80vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-semibold text-lg">Processed Image (for OCR)</h3>
+              <button 
+                onClick={() => setShowBinarizedPreview(false)}
+                className="p-1.5 rounded-full hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto bg-gray-50 rounded-xl border border-gray-100 p-2 flex items-center justify-center">
+              <img src={binarizedImage} alt="Processed" className="max-w-full max-h-full object-contain" />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </motion.div>
+  );
 }
