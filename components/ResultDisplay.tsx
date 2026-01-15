@@ -10,7 +10,7 @@ interface ResultDisplayProps {
   theme: Theme
 }
 
-export default function ResultDisplay({ html, theme }: ResultDisplayProps) {
+export default function ResultDisplay({ html }: ResultDisplayProps) {
   const contentRef = useRef<HTMLDivElement>(null)
 
   const handleDownloadPdf = async () => {
