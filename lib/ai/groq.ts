@@ -48,7 +48,7 @@ export async function analyzeWithGroq(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-70b-versatile',
+        model: 'llama-3.3-70b-versatile',
         messages: [
           { role: 'system', content: customSystemPrompt || SYSTEM_PROMPT },
           { role: 'user', content: `Analyze this passage:\n\n${passage}` },

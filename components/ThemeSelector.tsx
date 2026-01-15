@@ -7,46 +7,39 @@ interface ThemeSelectorProps {
   onThemeChange: (theme: Theme) => void
 }
 
+const themes = [
+  { id: 'modern-blue' as Theme, name: 'Electric Blue', color: 'bg-[#3b82f6]', ring: 'ring-blue-300' },
+  { id: 'classic-green' as Theme, name: 'Emerald', color: 'bg-[#22c55e]', ring: 'ring-green-300' },
+  { id: 'elegant-purple' as Theme, name: 'Violet', color: 'bg-[#a855f7]', ring: 'ring-purple-300' },
+  { id: 'sunset-orange' as Theme, name: 'Orange', color: 'bg-[#f97316]', ring: 'ring-orange-300' },
+  { id: 'rose-red' as Theme, name: 'Rose', color: 'bg-[#f43f5e]', ring: 'ring-rose-300' },
+  { id: 'ocean-teal' as Theme, name: 'Teal', color: 'bg-[#14b8a6]', ring: 'ring-teal-300' },
+  { id: 'midnight-slate' as Theme, name: 'Indigo', color: 'bg-[#6366f1]', ring: 'ring-indigo-300' },
+]
+
 export default function ThemeSelector({ selectedTheme, onThemeChange }: ThemeSelectorProps) {
   return (
-    <div className="flex items-center gap-3 bg-white/50 backdrop-blur-sm p-2 rounded-xl border border-gray-200/50 shadow-sm flex-wrap">
-      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Theme</span>
-      <div className="flex gap-2 flex-wrap">
-        <button
-          onClick={() => onThemeChange('modern-blue')}
-          className={`w-8 h-8 rounded-full bg-blue-600 border-2 transition-all hover:scale-110 ${selectedTheme === 'modern-blue' ? 'border-gray-800 ring-2 ring-blue-200' : 'border-white shadow-sm'}`}
-          title="Modern Blue"
-        />
-        <button
-          onClick={() => onThemeChange('classic-green')}
-          className={`w-8 h-8 rounded-full bg-green-700 border-2 transition-all hover:scale-110 ${selectedTheme === 'classic-green' ? 'border-gray-800 ring-2 ring-green-200' : 'border-white shadow-sm'}`}
-          title="Classic Green"
-        />
-        <button
-          onClick={() => onThemeChange('elegant-purple')}
-          className={`w-8 h-8 rounded-full bg-purple-700 border-2 transition-all hover:scale-110 ${selectedTheme === 'elegant-purple' ? 'border-gray-800 ring-2 ring-purple-200' : 'border-white shadow-sm'}`}
-          title="Elegant Purple"
-        />
-        <button
-          onClick={() => onThemeChange('sunset-orange')}
-          className={`w-8 h-8 rounded-full bg-orange-600 border-2 transition-all hover:scale-110 ${selectedTheme === 'sunset-orange' ? 'border-gray-800 ring-2 ring-orange-200' : 'border-white shadow-sm'}`}
-          title="Sunset Orange"
-        />
-        <button
-          onClick={() => onThemeChange('rose-red')}
-          className={`w-8 h-8 rounded-full bg-rose-600 border-2 transition-all hover:scale-110 ${selectedTheme === 'rose-red' ? 'border-gray-800 ring-2 ring-rose-200' : 'border-white shadow-sm'}`}
-          title="Rose Red"
-        />
-        <button
-          onClick={() => onThemeChange('ocean-teal')}
-          className={`w-8 h-8 rounded-full bg-teal-600 border-2 transition-all hover:scale-110 ${selectedTheme === 'ocean-teal' ? 'border-gray-800 ring-2 ring-teal-200' : 'border-white shadow-sm'}`}
-          title="Ocean Teal"
-        />
-        <button
-          onClick={() => onThemeChange('midnight-slate')}
-          className={`w-8 h-8 rounded-full bg-slate-600 border-2 transition-all hover:scale-110 ${selectedTheme === 'midnight-slate' ? 'border-gray-800 ring-2 ring-slate-200' : 'border-white shadow-sm'}`}
-          title="Midnight Slate"
-        />
+    <div className="flex items-center gap-2 sm:gap-3 bg-white/80 backdrop-blur-md p-2 sm:p-2.5 rounded-2xl border border-gray-200/60 shadow-lg">
+      <span className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider px-1 hidden sm:block">Theme</span>
+      <div className="flex gap-1.5 sm:gap-2">
+        {themes.map((theme) => (
+          <button
+            key={theme.id}
+            onClick={() => onThemeChange(theme.id)}
+            className={`
+              w-7 h-7 sm:w-9 sm:h-9 rounded-full ${theme.color} 
+              border-2 border-white shadow-md
+              transition-all duration-200 ease-out
+              hover:scale-110 hover:shadow-lg
+              active:scale-95
+              ${selectedTheme === theme.id 
+                ? `ring-4 ${theme.ring} scale-110` 
+                : 'opacity-80 hover:opacity-100'
+              }
+            `}
+            title={theme.name}
+          />
+        ))}
       </div>
     </div>
   )

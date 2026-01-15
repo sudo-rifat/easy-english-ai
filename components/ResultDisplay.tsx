@@ -2,13 +2,8 @@
 
 import { useRef } from 'react'
 import { Theme } from './ThemeSelector'
-
-interface ResultDisplayProps {
-  html: string
-  theme: Theme
-}
-
 import AnalysisCard from './AnalysisCard'
+import { InteractiveBlocks } from './InteractiveBlocks'
 
 interface ResultDisplayProps {
   html: string
@@ -59,13 +54,17 @@ export default function ResultDisplay({ html, theme }: ResultDisplayProps) {
       <div className="flex-1 overflow-y-auto border border-white/40 rounded-xl bg-white/40 backdrop-blur-sm shadow-inner">
         <div
           ref={contentRef}
-          className={`theme-${theme} formatted-content min-h-full p-6`}
+          className={`formatted-content min-h-full p-6`}
         >
           {jsonData ? (
             <div className="space-y-6">
-              {jsonData.sentences.map((sentence: any, idx: number) => (
-                <AnalysisCard key={idx} index={idx + 1} sentence={sentence} />
-              ))}
+              {jsonData.sentences[0]?.chunks ? (
+                <InteractiveBlocks data={jsonData.sentences} />
+              ) : (
+                jsonData.sentences.map((sentence: any, idx: number) => (
+                  <AnalysisCard key={idx} index={idx + 1} sentence={sentence} />
+                ))
+              )}
             </div>
           ) : (
             <div dangerouslySetInnerHTML={{ __html: html }} />

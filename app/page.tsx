@@ -9,6 +9,7 @@ import ResponseFormatter from '@/components/ResponseFormatter'
 import ThemeSelector, { Theme } from '@/components/ThemeSelector'
 import StableAnalyzer from '@/components/StableAnalyzer'
 import OnboardingModal from '@/components/OnboardingModal'
+import { splitIntoSentences, translateSentences } from '@/lib/translationService'
 
 type ViewMode = 'analyzer' | 'formatter' | 'stable'
 
@@ -29,6 +30,47 @@ export default function Home() {
     setResult(null)
     
     try {
+      // Special handling for Client-Side Google Translate
+      if (formData.aiProvider === 'google-translate') {
+        const sentences = splitIntoSentences(formData.passage);
+        
+        // 1. Translate sentences
+        const translatedMap = await translateSentences(sentences);
+
+        // 2. Fetch word meanings
+        const allWords = formData.passage.split(/\s+/).map(w => w.replace(/[.,!?;:'"()[\]{}]/g, '').trim()).filter(w => w.length > 2);
+        const uniqueWords = [...new Set(allWords)];
+        // Use a smaller batch size for word meanings to ensure reliability
+        const wordMeanings = await import('@/lib/translationService').then(m => m.fetchWordMeanings(uniqueWords, 10, 200));
+
+        const analyzedData = {
+          sentences: sentences.map(original => {
+            // Split into "pseudo-chunks" (words)
+            const words = original.split(/(\s+|[,.;?!]+)/).filter(w => w.trim().length > 0);
+            
+            return {
+              original,
+              translation: translatedMap.get(original) || '',
+              chunks: words.map(text => {
+                const cleanText = text.trim().replace(/[.,!?;:'"()[\]{}]/g, '').toLowerCase();
+                const isWord = cleanText.length > 0 && /\w/.test(text); // Basic check if it's a word
+                
+                return {
+                  text: text,
+                  meaning: isWord ? (wordMeanings.get(cleanText) || wordMeanings.get(text.trim()) || '') : '',
+                  grammar: null,
+                  color: 'gray'
+                };
+              })
+            };
+          })
+        };
+        
+        setResult(JSON.stringify(analyzedData));
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: {
@@ -40,7 +82,8 @@ export default function Home() {
       const data = await response.json()
 
       if (response.ok) {
-        setResult(data.html)
+        // Handle both legacy HTML response and new JSON response
+        setResult(data.html || JSON.stringify(data))
       } else {
         setResult(`<div class="p-4 bg-red-100 border border-red-400 rounded text-red-700">${data.error}</div>`)
       }
@@ -53,7 +96,7 @@ export default function Home() {
 
   return (
     <main className="min-h-screen py-4 px-3 sm:py-6 sm:px-4 md:py-8 overflow-x-hidden">
-      <div className="max-w-7xl mx-auto">
+      <div className={`max-w-7xl mx-auto theme-${analyzerTheme}`}>
         <div className="text-center mb-6 sm:mb-8 md:mb-10">
           <div className="flex justify-center items-center gap-2 sm:gap-4 mb-3 sm:mb-4 flex-wrap">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-800 tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 pb-2">
@@ -154,15 +197,19 @@ export default function Home() {
 
         {/* Easy Translation Content */}
         <div className={viewMode === 'stable' ? 'block animate-in fade-in zoom-in-95 duration-500' : 'hidden'}>
-          <div className="glass-card rounded-2xl p-4 sm:p-6 md:p-8">
-            <div className="mb-6 flex justify-between items-start border-b pb-4 border-gray-100">
+          <div className="glass-card rounded-2xl p-2 sm:p-4 md:p-8">
+            <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b pb-4 border-gray-100 gap-3">
               <div>
                 <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                  <span className="p-1.5 bg-indigo-100 rounded text-indigo-600">📖</span>
+                  <span className="p-1.5 bg-primary/10 rounded text-primary">📖</span>
                   Easy Translation
                 </h2>
-                <p className="text-gray-600 text-sm mt-1">শব্দে ক্লিক করে অর্থ দেখুন ও উচ্চারণ শুনুন (লাইন-বাই-লাইন অনুবাদ)</p>
+                <p className="text-gray-600 text-sm mt-1">শব্দে ক্লিক করে অর্থ দেখুন ও উচ্চারণ শুনুন</p>
               </div>
+              <ThemeSelector 
+                selectedTheme={analyzerTheme} 
+                onThemeChange={setAnalyzerTheme} 
+              />
             </div>
             <StableAnalyzer />
           </div>

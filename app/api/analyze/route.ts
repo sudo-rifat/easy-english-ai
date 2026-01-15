@@ -1,138 +1,110 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { analyzeWithGemini } from '@/lib/ai/gemini'
-import { analyzeWithGroq } from '@/lib/ai/groq'
-import { analyzeWithTogether } from '@/lib/ai/together'
-import { analyzeWithOpenAI } from '@/lib/ai/openai'
-import { analyzeWithHuggingFace } from '@/lib/ai/huggingface'
-import { translateWithGoogleSegments, translateBatch } from '@/lib/ai/google-translate'
-import { STABLE_SYSTEM_PROMPT } from '@/lib/ai/stable'
+import { NextRequest, NextResponse } from 'next/server';
 
-const JSON_ANALYSIS_PROMPT = `
-You are an expert English teacher.
-Analyze the following English text and provide a structured JSON response.
-Do NOT use Markdown formatting. Return ONLY raw JSON.
+const ANALYZER_PROMPT = `You are an expert English-to-Bengali language teacher.
+TASK: Analyze the following English text.
+1. Split the text into individual sentences.
+2. For each sentence, break it down into logical "meaning chunks" (phrases).
+3. Provide the Bengali meaning for each chunk.
+4. Provide a natural, fluent Bengali translation for the full sentence.
+5. Assign a grammar role/color hint to main chunks (Subject=blue, Verb=red, Object/Preposition=green, Other=gray).
 
-Output format:
+OUTPUT FORMAT:
+Return ONLY valid JSON with this structure:
 {
   "sentences": [
     {
-      "english": "Sentence in English",
-      "vocab": [
-        { "word": "difficult word", "meaning": "Bangla meaning" }
-      ],
-      "literal_translation": "Bangla literal translation",
-      "fluent_translation": "Natural Bangla translation"
+      "original": "Full English sentence",
+      "translation": "Full natural Bengali translation",
+      "chunks": [
+        { "text": "English chunk", "meaning": "Bengali meaning", "grammar": "Subject", "color": "blue" },
+        { "text": "English chunk", "meaning": "Bengali meaning", "grammar": "Verb", "color": "red" }
+      ]
     }
   ]
 }
 
-Ensure the Bangla translations are natural and accurate.
-`
+TEXT TO ANALYZE:
+`;
 
 export async function POST(request: NextRequest) {
   try {
-    const { passage, aiProvider, apiKey, mode } = await request.json()
+    const body = await request.json();
+    const text = body.text || body.passage;
+    const provider = body.provider || body.aiProvider;
+    const apiKey = body.apiKey;
 
-    if (!passage || !aiProvider || (!apiKey && aiProvider !== 'google-translate')) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    if (!text || !provider) {
+      return NextResponse.json({ error: 'Missing required fields (text/passage or provider)' }, { status: 400 });
     }
 
-    let analysis = ''
-    // Use JSON prompt for default analyzer, Stable prompt for stable mode
-    const systemPrompt = mode === 'stable' ? STABLE_SYSTEM_PROMPT : JSON_ANALYSIS_PROMPT
+    let responseText = '';
+    const fullPrompt = `${ANALYZER_PROMPT}\n"${text}"`;
 
-    switch (aiProvider) {
-      case 'gemini':
-        analysis = await analyzeWithGemini(passage, apiKey, systemPrompt)
-        break
-      case 'groq':
-        analysis = await analyzeWithGroq(passage, apiKey, systemPrompt)
-        break
-      case 'google-translate':
-        // Pre-process passage to replace smart quotes and punctuation with spaces
-        // This ensures words next to quotes are correctly identified as separate words
-        // Also handle possessives ('s) and contractions by replacing apostrophe-based patterns
-        let cleanPassage = passage.replace(/[\u2018\u2019\u201C\u201D".,!?;:()]/g, ' ')
-        // Remove possessive 's and handle contractions (n't, 'll, 've, 're, 'd) by splitting
-        cleanPassage = cleanPassage.replace(/'s\b/gi, ' ') // milliner's -> milliner
-        cleanPassage = cleanPassage.replace(/n't\b/gi, ' not ') // won't -> wo not (will pick up 'not')
-        cleanPassage = cleanPassage.replace(/'ll\b/gi, ' will ')
-        cleanPassage = cleanPassage.replace(/'ve\b/gi, ' have ')
-        cleanPassage = cleanPassage.replace(/'re\b/gi, ' are ')
-        cleanPassage = cleanPassage.replace(/'d\b/gi, ' would ')
-        cleanPassage = cleanPassage.replace(/'/g, ' ') // Remove remaining apostrophes
-        
-        // Extract all words (including hyphenated words like 'glass-fronted')
-        const words = cleanPassage.match(/\b[a-zA-Z]+(?:-[a-zA-Z]+)*\b/g) || []
-        // Fetch translations for these words
-        const vocabMap = await translateBatch(words)
-        
-        if (mode === 'stable') {
-          // Stable Reader Mode (Lines + Vocab)
-          const segments = await translateWithGoogleSegments(passage)
-          const linesBlock = segments.map(s => `${s.source} ||| ${s.target}`).join('\n')
-          
-          // Generate Vocab Block
-          const vocabLines = Object.entries(vocabMap).map(([word, meaning]) => `${word} ||| ${meaning}`)
-          const vocabBlock = vocabLines.length > 0 
-            ? vocabLines.join('\n')
-            : "note ||| No vocabulary found via Google Translate."
-            
-          analysis = `[LINES]\n${linesBlock}\n\n[VOCAB]\n${vocabBlock}`
-        } else {
-          // Analyzer/JSON Mode
-          
-          // Get sentence-level segments
-          const segments = await translateWithGoogleSegments(passage)
-          
-          // Map to Analysis JSON structure
-          const sentences = segments.map(segment => {
-            // Filter vocab relevant to this specific sentence
-            const segmentVocab = Object.entries(vocabMap)
-              .filter(([word]) => segment.source.toLowerCase().includes(word.toLowerCase()))
-              .map(([word, meaning]) => ({ word, meaning }))
+    // Common fetch options
+    const headers = {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    };
 
-            return {
-              english: segment.source,
-              vocab: segmentVocab.length > 0 ? segmentVocab : [{ word: "Note", meaning: "No key vocabulary found in this sentence" }],
-              literal_translation: "Literal translation not available via Google Translate.",
-              fluent_translation: segment.target
-            }
-          })
+    if (provider === 'huggingface') {
+       // Using Zephyr 7B as it is reliable on free tier
+       const response = await fetch('https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          inputs: `<|system|>\n${ANALYZER_PROMPT}\n</s>\n<|user|>\n${text}\n</s>\n<|assistant|>\n`,
+          parameters: { max_new_tokens: 4096, temperature: 0.1, return_full_text: false }
+        })
+      });
+      if (!response.ok) throw new Error(`HuggingFace Error: ${response.status}`);
+      const data = await response.json();
+      responseText = data[0]?.generated_text || '';
 
-          const fakeAnalysis = { sentences }
-          analysis = JSON.stringify(fakeAnalysis)
-        }
-        break
-      case 'together':
-        analysis = await analyzeWithTogether(passage, apiKey, systemPrompt)
-        break
-      case 'openai':
-        analysis = await analyzeWithOpenAI(passage, apiKey, systemPrompt)
-        break
-      case 'huggingface':
-        analysis = await analyzeWithHuggingFace(passage, apiKey, systemPrompt)
-        break
-      default:
-        return NextResponse.json(
-          { error: 'Invalid AI provider' },
-          { status: 400 }
-        )
+    } else if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: fullPrompt }] }],
+          generationConfig: { temperature: 0.1, responseMimeType: "application/json" }
+        })
+      });
+      if (!response.ok) throw new Error(`Gemini Error: ${response.status}`);
+      const data = await response.json();
+      responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    } else {
+      // Groq (Llama 3.3) / OpenAI
+      const model = provider === 'openai' ? 'gpt-4o' : 'llama-3.3-70b-versatile';
+      const url = provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' : 'https://api.groq.com/openai/v1/chat/completions';
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: ANALYZER_PROMPT },
+            { role: 'user', content: text }
+          ],
+          temperature: 0.1,
+          response_format: { type: "json_object" }
+        })
+      });
+      if (!response.ok) throw new Error(`${provider} Error: ${response.status}`);
+      const data = await response.json();
+      responseText = data.choices?.[0]?.message?.content || '';
     }
 
-    // For stable mode, we might want some formatting, but usually it's handled by client.
-    // For default JSON mode, we pass the raw JSON string as 'html' because ResultDisplay now parses JSON.
-    const html = analysis
+    // Clean and Parse JSON
+    const cleanJson = responseText.replace(/```json|```/g, '').trim();
+    const parsedData = JSON.parse(cleanJson);
 
-    return NextResponse.json({ analysis, html })
-  } catch (error) {
-    console.error('Analysis error:', error)
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Analysis failed' },
-      { status: 500 }
-    )
+    return NextResponse.json(parsedData);
+
+  } catch (error: any) {
+    console.error('Analyzer API error:', error);
+    return NextResponse.json({ error: error.message || 'Analysis failed' }, { status: 500 });
   }
 }

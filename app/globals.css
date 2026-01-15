@@ -44,15 +44,6 @@
     --gradient-primary: linear-gradient(135deg, hsl(238 83% 66%), hsl(217 91% 60%));
     --gradient-secondary: linear-gradient(135deg, hsl(199 89% 48%), hsl(173 80% 40%));
     --gradient-bg: linear-gradient(135deg, hsl(220 25% 97%), hsl(220 30% 94%));
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
@@ -87,16 +78,57 @@
     --glass-bg: 224 71% 8% / 0.8;
     --glass-border: 0 0% 100% / 0.1;
     --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
   }
+}
+
+/* Theme Classes - Modern Vibrant Colors */
+.theme-modern-blue {
+  --primary: 221 83% 53%; /* Vibrant Electric Blue */
+  --ring: 221 83% 53%;
+  --accent: 199 89% 48%;
+  --gradient-primary: linear-gradient(135deg, hsl(221 83% 53%), hsl(199 89% 48%));
+}
+
+.theme-classic-green {
+  --primary: 142 76% 36%; /* Rich Emerald */
+  --ring: 142 76% 36%;
+  --accent: 160 84% 39%;
+  --gradient-primary: linear-gradient(135deg, hsl(142 76% 36%), hsl(160 84% 39%));
+}
+
+.theme-elegant-purple {
+  --primary: 271 91% 65%; /* Bright Violet */
+  --ring: 271 91% 65%;
+  --accent: 289 86% 58%;
+  --gradient-primary: linear-gradient(135deg, hsl(271 91% 65%), hsl(289 86% 58%));
+}
+
+.theme-sunset-orange {
+  --primary: 25 95% 53%; /* Vivid Orange */
+  --ring: 25 95% 53%;
+  --accent: 14 100% 57%;
+  --gradient-primary: linear-gradient(135deg, hsl(25 95% 53%), hsl(14 100% 57%));
+}
+
+.theme-rose-red {
+  --primary: 350 89% 60%; /* Hot Pink/Rose */
+  --ring: 350 89% 60%;
+  --accent: 330 81% 60%;
+  --gradient-primary: linear-gradient(135deg, hsl(350 89% 60%), hsl(330 81% 60%));
+}
+
+.theme-ocean-teal {
+  --primary: 174 84% 40%; /* Deep Cyan */
+  --ring: 174 84% 40%;
+  --accent: 187 92% 43%;
+  --gradient-primary: linear-gradient(135deg, hsl(174 84% 40%), hsl(187 92% 43%));
+}
+
+.theme-midnight-slate {
+  --primary: 231 48% 48%; /* Deep Indigo */
+  --ring: 231 48% 48%;
+  --accent: 243 75% 59%;
+  --gradient-primary: linear-gradient(135deg, hsl(231 48% 48%), hsl(243 75% 59%));
 }
 
 @layer base {
